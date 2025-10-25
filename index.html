@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="container">
+    <table id="main" class="w-100">
+        <tr>
+            <td id="header" class="position-relative bg-danger">
+                <h1 class="text text-center bg-primary">PHP REST API WITH HTML CRUD</h1>
+
+                <div id="search-bar" class="bg-danger position-absolute end-0 width-100">
+                    <label class="">SEARCH</label>
+                    <input class="" type="text" name="" id="search" autocomplete="off">
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td id="table-form" class="bg-danger">
+                <form id="addForm" class="bg-danger">
+                    Name : <input type="text" name="name" id="name">
+                    <input type="submit" id="save-button" value="Save">
+                </form>
+            </td>
+        </tr>
+        <tr>
+            <tr id="table-data">
+                <table class="table table-hover table-sm table-bordered text-bg-info" border="2" width="100%" cellpadding="10px">
+                    <tr class="text-bg-info">
+                        <th width="40px" class="text-center">ID</th>
+                        <th width="100px" class="text-center">Name</th>
+                        <th width="60px"class="text-center">EDIT</th>
+                        <th width="70px" class="text-center">DELETE</th>
+                    </tr>
+                    <tbody id="load-table" class="text-bg-info"></tbody>
+                </table>
+            </tr>
+        </tr>
+    </table>
+
+    <div id="error-message" class="message position-absolute top-0 end-0 bg-danger"></div>
+    <div id="success-message" class="message position-absolute top-0 end-0 bg-success"></div>
+
+
+    <div id="modal" class="position-fixed d-flex justify-content-center align-items-center d-none">
+        <div id="modal-form" class="bg-white rounded-4 position-relative d-none">
+            <h2 class="text-center">EDIT</h2>
+            <form action="" id="edit-form">
+                <table cellpadding="10px" width="100%">
+                    <tr>
+                        <td width="90px">Name</td>
+                        <td><input type="text" name="name" id="edit-name"></td>
+                        <td><input type="text" name="id" id="edit-id" hidden=""></td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td><input type="button" value="Update" id="edit-submit"></td>
+                    </tr>
+                </table>
+            </form>
+            <div id="close-btn">X</div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+    <script>
+        $(document).ready(function(){
+            function loadTable(){
+                $("#load-table").html("");
+                $.ajax({
+                    url: 'http://localhost/rest-Api/php-fetch-all.php',
+                    type: 'GET',
+                    success: function(data){
+                        if(data.status == false){
+                            $('#load-table').append("<tr><td colspan='6'><H2>"+ data.message +"</H2></td></tr>")
+                        }else{
+                            $.each(data, function(key, value){
+                                $('#load-table').append("<tr>"
+                                                            +"<td>"+ value.id +"</td>"+
+                                                            "<td>"+ value.name +"</td>"+
+                                                            "<td><button class='edit-btn' data-eid='"+ value.id +"'>EDIT</button></td>"+
+                                                            "<td><button class='delete-btn' data-id='"+ value.id +"'>DELETE</button></td>"+
+                                                        "</tr>")
+                            });
+                        }
+                    }
+                });
+            }
+            loadTable();
+
+            function message(message, status){
+                if(status == true){
+                    $("#success-message").html(message).slideDown();
+                    $("#error-message").slideUp();
+                    setTimeout(function(){
+                        $("#success-message").slideUp();
+                    }, 4000);
+                }else{
+                    $("#error-message").html(message).slideDown();
+                    $("#success-message").slideUp();
+                    setTimeout(function(){
+                        $("#error-message").slideUp();
+                    }, 4000);
+                }
+            }
+
+            function jsonData(targetForm){
+                var arr = $(targetForm).serializeArray();
+                var obj = {};
+                for(var a = 0; a < arr.length; a++){
+                    if(arr[a].value == ""){
+                        return false;
+                    }
+                    obj[arr[a].name] = arr[a].value;
+                }
+                var json_string = JSON.stringify(obj);
+                return json_string;
+            }
+
+
+            $(document).on("click", ".edit-btn", function(){
+                $("#modal").removeClass("d-none");
+                $("#modal-form").removeClass("d-none");
+                var nameId = $(this).data("eid");
+                var obj = {id : nameId};
+                var myJSON = JSON.stringify(obj);
+
+                $.ajax({
+                    url: 'http://localhost/rest-Api/php-fetch-single.php',
+                    type: 'POST',
+                    data: myJSON,
+                    success: function(data){
+                        $("#edit-id").val(data[0].id);
+                        $("#edit-name").val(data[0].name);
+                        // console.log(data)
+                    }
+                });
+            });
+
+            $(document).on("click", "#close-btn", function(){
+                $("#modal").addClass("d-none");
+                $("#modal-form").addClass("d-none");
+            });
+
+
+            $("#save-button").on("click", function(e){
+                    e.preventDefault();
+                    var jsonObj = jsonData("#addForm")  
+                    if(jsonObj == false){
+                        message("There is not file the data", false);
+                    }else{
+                        $.ajax({
+                        url: 'http://localhost/rest-Api/api-insert.php',
+                        type: 'POST',
+                        data: jsonObj,
+                        success: function(data){
+                            message(data.message, data.status);
+
+                            if(data.status == true){
+                                loadTable();
+                                $("#addForm").trigger("reset");
+                            }
+                        }
+                    });
+                }
+            });
+
+
+
+            $("#edit-submit").on("click", function(e){
+                    e.preventDefault();
+                    var jsonObj = jsonData("#edit-form")  
+                    if(jsonObj == false){
+                        message("There is not file the data", false);
+                    }else{
+                        $.ajax({
+                        url: 'http://localhost/rest-Api/api-update.php',
+                        type: 'POST',
+                        data: jsonObj,
+                        success: function(data){
+                            message(data.message, data.status);
+
+                            if(data.status == true){
+                                $("#modal").addClass("d-none");
+                                $("#modal-form").addClass("d-none");
+                                loadTable();
+                            }
+                        }
+                    });
+                }
+            });
+
+            $(document).on("click", ".delete-btn", function(){
+                if(confirm("are you want to delete this recored")){
+                    var nameId = $(this).data("id");
+                    var obj = {id : nameId};
+                    var myJSON = JSON.stringify(obj);
+
+                    var row = this;
+
+                    $.ajax({
+                        url: 'http://localhost/rest-Api/api-delete.php',
+                        type: 'POST',
+                        data: myJSON,
+                        success: function(data){
+                            message(data.message, data.status);
+
+                            if(data.status == true){
+                                $(row).closest("tr").fadeOut();
+                            }
+                        }
+                    });
+                }
+            });
+
+            $("#search").on("keyup", function(){
+                var search_term = $(this).val();
+
+                $("#load-table").html("");
+
+                $.ajax({
+                    url: "http://localhost/rest-Api/php-search.php?search=" + search_term,
+                    type: "GET",
+                    success: function(data){
+                        if(data.status == false){
+                            $('#load-table').append("<tr><td colspan='6'><H2>"+ data.message +"</H2></td></tr>")
+                        }else{
+                            $.each(data, function(key, value){
+                                $('#load-table').append("<tr>"
+                                                            +"<td>"+ value.id +"</td>"+
+                                                            "<td>"+ value.name +"</td>"+
+                                                            "<td><button class='edit-btn' data-eid='"+ value.id +"'>EDIT</button></td>"+
+                                                            "<td><button class='delete-btn' data-id='"+ value.id +"'>DELETE</button></td>"+
+                                                        "</tr>")
+                            });
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+
+
+</body>
+</html>
